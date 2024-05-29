@@ -1,0 +1,4 @@
+name: myLove
+version: '${version}'
+main: me.such.mylove.MyLove
+api-version: '1.20'
