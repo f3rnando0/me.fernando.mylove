@@ -12,11 +12,15 @@ public class Challegens {
     private static int firstLevelPoints;
     private static Location secondLevelLastCheckpoint;
     private static List<Location> secondLevelCheckpointsPressed;
+    private static int thirdLevelAcertos;
+    private static int thirdLevelQuestion;
 
     Challegens() {
         firstLevelCows = new ArrayList<>();
         firstLevelPoints = 0;
         secondLevelCheckpointsPressed =  new ArrayList<>();
+        thirdLevelAcertos = 0;
+        thirdLevelQuestion = 1;
     }
 
     public final void setLevel(int levelWhich) {
@@ -74,4 +78,20 @@ public class Challegens {
     }
 
     public final void resetCorrectThirdLevel() {}
+
+    public final void increaseThirdLevelAcertos() {
+        thirdLevelAcertos++;
+    }
+
+    public final int getThirdLevelAcertos() {
+        return thirdLevelAcertos;
+    }
+
+    public final void increaseThirdLevelQuestion() {
+        thirdLevelQuestion++;
+    }
+
+    public final int getCurrentQuestionThirdLevel() {
+        return thirdLevelQuestion;
+    }
 }

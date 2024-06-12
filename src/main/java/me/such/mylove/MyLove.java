@@ -1,11 +1,8 @@
 package me.such.mylove;
 
-import org.bukkit.*;
-import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -14,6 +11,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.event.entity.EntityPortalEnterEvent;
+import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
@@ -21,28 +19,44 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
-import org.bukkit.util.Vector;
+import org.bukkit.*;
 
 import java.util.List;
 import java.util.Objects;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.TextComponent;
+
 
 public final class MyLove extends JavaPlugin implements Listener {
     Challegens challegens = new Challegens();
     ChallengesEntities challengesEntities = new ChallengesEntities();
+    Third third = new Third();
 
     @Override
     public void onEnable() {
         System.out.println("[MyLove] Plugin enabled");
 
         getServer().getPluginManager().registerEvents(this, this);
+        Location spawn = new Location(getServer().getWorld("world"), -1.5F, -60, 0.513F, -89.8F, -0.9F);
+        getServer().getWorld("world").setSpawnLocation(spawn);
+
+        new BukkitRunnable() {
+            public void run() {
+                Bukkit.getServer().getWorld("world").setTime(0L);
+            }
+        }.runTaskTimer(this, 0L, 100L);
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) throws InterruptedException {
+        Location spawn = new Location(event.getPlayer().getWorld(), -1.5F, -60, 0.513F, -89.8F, -0.9F);
+        event.getPlayer().teleport(spawn);
         ChallengesLocations challengesLocations = new ChallengesLocations(event.getPlayer().getWorld());
         event.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
         event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
         event.getPlayer().setWalkSpeed(0.2F);
+
         long delay = 65;
 
         event.getPlayer().sendTitle("§fSeja bem-vinda, §dmeu amor!", "§fVocê vai se divertir muito aqui!", 10, 45, 10);
@@ -185,6 +199,7 @@ public final class MyLove extends JavaPlugin implements Listener {
                     score.setScore(1);
 
                     ((Player) e.getEntity()).setScoreboard(board);
+                    ((Player) e.getEntity()).getInventory().clear();
                     long delay = 65;
 
                     challegens.setLevel(1);
@@ -359,9 +374,62 @@ public final class MyLove extends JavaPlugin implements Listener {
                 s1.setScore(1);
 
                 event.getPlayer().setScoreboard(board);
+
+                event.getPlayer().sendTitle(ChatColor.GREEN + "Segundo desafio", "§fBem simples, §4parkour. §fPise nas placas pra pegar o checkpoint.");
+                event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
             }
         }
+        if(event.getTo().equals(challegensLocations.getThird())) {
+            if(challegens.getLevel() == 3) {
+                Scoreboard board = getServer().getScoreboardManager().getMainScoreboard();
 
+                Objective objective = board.getObjective("third");
+                if (objective == null) {
+                    objective = board.registerNewObjective("third", "dummy", ChatColor.DARK_GRAY + "☆ Terceiro desafio", RenderType.HEARTS);
+                } else {
+                    objective.setDisplayName(ChatColor.DARK_GRAY + "☆ Terceiro desafio");
+                    board.getEntries().forEach(board::resetScores);
+                }
+
+                objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+                Score s1 = objective.getScore(ChatColor.WHITE + "╚ Acertos: " + ChatColor.DARK_GRAY + challegens.getThirdLevelAcertos() + "/3");
+
+                s1.setScore(1);
+
+                event.getPlayer().setScoreboard(board);
+
+                event.getPlayer().sendTitle(ChatColor.DARK_GRAY + "Terceiro desafio", "§eQuiz. §fAcerte §4todas §fas perguntas.", 10, 25, 10);
+                event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+
+                event.getPlayer().getInventory().clear();
+                ItemStack item = new ItemStack(Material.RED_CONCRETE);
+                ItemMeta meta = item.getItemMeta();
+                meta.setDisplayName("§4Errado");
+                item.setItemMeta(meta);
+
+                event.getPlayer().getInventory().addItem(item);
+
+                ItemStack item2 = new ItemStack(Material.LIME_CONCRETE);
+                ItemMeta meta2 = item2.getItemMeta();
+                meta2.setDisplayName("§aCerto");
+                item2.setItemMeta(meta2);
+
+                event.getPlayer().getInventory().addItem(item2);
+
+                String msg = third.getQuestion(challegens.getCurrentQuestionThirdLevel());
+
+                new BukkitRunnable(){
+
+                    @Override
+                    public void run() {
+                        event.getPlayer().sendTitle("§6Primeira:", msg, 10, 55, 10);
+                        event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                    }
+
+                }.runTaskLater(this, 45);
+            }
+        }
     }
 
     @EventHandler
@@ -383,6 +451,170 @@ public final class MyLove extends JavaPlugin implements Listener {
 
             s1.setScore(1);
         }
+
+        if(e.getAction().equals(Action.RIGHT_CLICK_AIR)) {;
+            if(challegens.getLevel() == 3 && e.getPlayer().getInventory().getItemInMainHand().getType() == Material.RED_CONCRETE) {
+                if(challegens.getCurrentQuestionThirdLevel() == 1) {
+                    challegens.increaseThirdLevelAcertos();
+                    Scoreboard board = getServer().getScoreboardManager().getMainScoreboard();
+
+                    Objective objective = board.getObjective("third");
+                    if (objective == null) {
+                        objective = board.registerNewObjective("third", "dummy", ChatColor.DARK_GRAY + "☆ Terceiro desafio", RenderType.HEARTS);
+                    } else {
+                        objective.setDisplayName(ChatColor.DARK_GRAY + "☆ Terceiro desafio");
+                        board.getEntries().forEach(board::resetScores);
+                    }
+
+                    objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+                    Score s1 = objective.getScore(ChatColor.WHITE + "╚ Acertos: " + ChatColor.DARK_GRAY + challegens.getThirdLevelAcertos() + "/3");
+
+                    s1.setScore(1);
+
+                    e.getPlayer().setScoreboard(board);
+
+                    challegens.increaseThirdLevelQuestion();
+
+                    String msg = Third.getQuestion(challegens.getCurrentQuestionThirdLevel());
+
+                    new BukkitRunnable(){
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle("§4Segunda:", msg, 10, 55, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 45);
+                    return;
+                } else if(challegens.getCurrentQuestionThirdLevel() == 2) {
+                    challegens.increaseThirdLevelQuestion();
+
+                    String msg = Third.getQuestion(challegens.getCurrentQuestionThirdLevel());
+
+                    new BukkitRunnable(){
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle("§4Última:", msg, 10, 55, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 45);
+                } else if(challegens.getCurrentQuestionThirdLevel() == 3) {
+                    e.getPlayer().teleport(new Location(e.getPlayer().getWorld(), -260.49F, 23, 356.562F, -180, -2));
+                    e.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+                    Firework fw = (Firework) e.getPlayer().getWorld().spawnEntity(e.getPlayer().getLocation(), EntityType.FIREWORK);
+
+                    FireworkMeta fwm = fw.getFireworkMeta();
+
+                    fwm.setPower(2);
+                    fwm.addEffect(FireworkEffect.builder().withColor(Color.PURPLE).flicker(true).build());
+                    fw.setFireworkMeta(fwm);
+
+                    fw.detonate();
+                    e.getPlayer().sendTitle(ChatColor.LIGHT_PURPLE + "Você conseguiu, meu amor!!!", "Estou muito orgulhoso de você.", 10, 55, 10);
+                    e.getPlayer().getInventory().clear();
+
+                    new BukkitRunnable(){
+
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle(ChatColor.GOLD + "Seu presente vai", "§fser descoberto em 1", 10, 25, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 75);
+                    new BukkitRunnable(){
+
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle(ChatColor.GOLD + "Seu presente vai", "§fser descoberto em 2", 10, 25, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 95);
+                    new BukkitRunnable(){
+
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle(ChatColor.GOLD + "Seu presente vai", "§fser descoberto em 3", 10, 25, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 115);
+                    new BukkitRunnable(){
+
+                        @Override
+                        public void run() {
+                            TextComponent message1 = new TextComponent("E finalmente você conseguiu completar o desafio :)\n");
+                            TextComponent message2 = new TextComponent("Tudo aqui foi feito com muito carinho para você, meu amor. Tive de aprender do 0 a como programar plugins de Minecraft, mas no fim das contas não era tão difícil quanto eu pensava.\n");
+                            TextComponent message3 = new TextComponent("Espero que você tenha gostado do seu presentinho, meu bebê. Você é a coisa mais preciosa para mim, independente de qualquer coisa! Eu te amo, juju bebê nenem linda princesinha amor anjinho.\n");
+                            TextComponent link = new TextComponent("Clique aqui para ver o presente");
+
+                            link.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "https://localhost:3000"));
+                            link.setBold(true);
+                            link.setColor(net.md_5.bungee.api.ChatColor.GOLD);
+
+                            e.getPlayer().spigot().sendMessage(message1);
+                            e.getPlayer().spigot().sendMessage(message2);
+                            e.getPlayer().spigot().sendMessage(message3);
+                            e.getPlayer().spigot().sendMessage(link);
+                        }
+
+                    }.runTaskLater(this, 135);
+                }
+            } else if(challegens.getLevel() == 3 && e.getPlayer().getInventory().getItemInMainHand().getType() == Material.LIME_CONCRETE) {
+                if(challegens.getCurrentQuestionThirdLevel() == 1) {
+                    challegens.increaseThirdLevelQuestion();
+
+                    String msg = Third.getQuestion(challegens.getCurrentQuestionThirdLevel());
+
+                    new BukkitRunnable(){
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle("§4Segunda:", msg, 10, 55, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 45);
+                } else if(challegens.getCurrentQuestionThirdLevel() == 2) {
+                    challegens.increaseThirdLevelAcertos();
+                    Scoreboard board = getServer().getScoreboardManager().getMainScoreboard();
+
+                    Objective objective = board.getObjective("third");
+                    if (objective == null) {
+                        objective = board.registerNewObjective("third", "dummy", ChatColor.DARK_GRAY + "☆ Terceiro desafio", RenderType.HEARTS);
+                    } else {
+                        objective.setDisplayName(ChatColor.DARK_GRAY + "☆ Terceiro desafio");
+                        board.getEntries().forEach(board::resetScores);
+                    }
+
+                    objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+                    Score s1 = objective.getScore(ChatColor.WHITE + "╚ Acertos: " + ChatColor.DARK_GRAY + challegens.getThirdLevelAcertos() + "/3");
+
+                    s1.setScore(1);
+
+                    e.getPlayer().setScoreboard(board);
+
+                    challegens.increaseThirdLevelQuestion();
+
+                    String msg = Third.getQuestion(challegens.getCurrentQuestionThirdLevel());
+
+                    new BukkitRunnable(){
+                        @Override
+                        public void run() {
+                            e.getPlayer().sendTitle("§4Última:", msg, 10, 55, 10);
+                            e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 10, 90);
+                        }
+
+                    }.runTaskLater(this, 45);
+                    return;
+                } else if(challegens.getCurrentQuestionThirdLevel() == 3) {
+                    e.getPlayer().kickPlayer("Tudo errado. Vai ter que recomeçar! :)");
+                }
+            }
+        }
     }
 
     @EventHandler
@@ -390,5 +622,15 @@ public final class MyLove extends JavaPlugin implements Listener {
         if(e.getEntity().getType() == EntityType.PLAYER) {
             e.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    public void onBreakBlock(BlockBreakEvent e) {
+        e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onWeatherChange(WeatherChangeEvent e) {
+        e.setCancelled(true);
     }
 }
